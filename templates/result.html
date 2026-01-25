@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Search Result</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+<body>
+
+    <h2>Search Result</h2>
+
+    {% if result %}
+        {% for r in result %}
+            <p>
+                <b>Name:</b> {{ r[1] }} <br>
+                <b>Type:</b> {{ r[2] }} <br>
+                <b>Block:</b> {{ r[3] }} <br>
+                <b>Floor:</b> {{ r[4] }} <br>
+                <b>Room:</b> {{ r[5] }}
+            </p>
+            <hr>
+        {% endfor %}
+    {% else %}
+        <p>No data found</p>
+    {% endif %}
+
+    <a href="/">Back</a>
+
+</body>
+</html>
