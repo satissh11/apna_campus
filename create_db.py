@@ -19,7 +19,7 @@ cur.execute("""
 INSERT OR IGNORE INTO locations VALUES
 (1,'CSE Department','Department','A','2','201'),
 (2,'ECE Department','Department','B','1','105'),
-(3,'Dr. Sharma','Teacher','A','3','301')
+(3,'Dr. Sharma','Teacher','A1','3','304'),
 """)
 
 conn.commit()

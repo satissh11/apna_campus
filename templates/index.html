@@ -2,18 +2,105 @@
 <html>
 <head>
     <title>Smart Campus Navigation</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body{
+            margin:0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg,#1c92d2,#6dd5ed,#ff416c,#ff4b2b);
+            background-size:200% 200%;
+            animation: bgMove 15s ease infinite;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            min-height:100vh;
+        }
 
+        .container{
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(15px);
+            padding:40px 30px;
+            border-radius:25px;
+            text-align:center;
+            box-shadow: 0 0 30px rgba(0,0,0,0.2);
+        }
+
+        h2{
+            margin-bottom:20px;
+            color:white;
+            text-shadow:0 0 10px rgba(0,0,0,0.3);
+        }
+
+        input[type="text"]{
+            padding:12px 20px;
+            width:80%;
+            border-radius:25px;
+            border:2px solid white;
+            outline:none;
+            font-size:16px;
+            transition:0.3s;
+        }
+
+        input[type="text"]:focus{
+            border-color:#ff416c;
+            box-shadow:0 0 15px #ff416c;
+        }
+
+        button{
+            margin-top:20px;
+            padding:12px 28px;
+            border:none;
+            border-radius:30px;
+            font-size:18px;
+            font-weight:bold;
+            background:white;
+            color:#ff416c;
+            cursor:pointer;
+            transition: all 0.3s ease;
+            overflow:hidden;
+            position:relative;
+        }
+
+        button:hover{
+            transform: scale(1.1);
+            box-shadow: 0 0 15px rgba(255,65,108,0.7);
+        }
+
+        button:after{
+            content:"";
+            position:absolute;
+            width:100px;
+            height:100px;
+            background: rgba(255,65,108,0.3);
+            display:block;
+            border-radius:50%;
+            pointer-events:none;
+            transform:scale(0);
+            opacity:0;
+            transition: transform 0.5s, opacity 1s;
+        }
+        button:active:after{
+            transform: scale(3);
+            opacity:1;
+            transition: 0s;
+        }
+
+        @keyframes bgMove{
+            0% { background-position:0% 50%; }
+            50% { background-position:100% 50%; }
+            100% { background-position:0% 50%; }
+        }
+    </style>
 </head>
 <body>
-
+<div class="container">
     <h2>Smart Campus Navigation System</h2>
 
     <form action="/search" method="post">
-        <input type="text" name="search" placeholder="Enter Department / Teacher name" required>
+        <input type="text" name="search" placeholder="Enter Teacher / Department / Building / Canteen" required>
         <br><br>
-        <button type="submit">Search</button>
+        <button type="submit">Search 🔍</button>
     </form>
-
+</div>
 </body>
 </html>

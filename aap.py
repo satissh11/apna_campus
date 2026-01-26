@@ -3,33 +3,33 @@ import sqlite3
 
 app = Flask(__name__)
 
-# database se data laane ka function
-def get_location(search_text):
+# Search function
+def search_data(search_text):
     conn = sqlite3.connect("campus.db")
     cur = conn.cursor()
-    cur.execute(
-        "SELECT * FROM locations WHERE name LIKE ?",
-        ('%' + search_text + '%',)
-    )
+    query = """
+    SELECT * FROM locations
+    WHERE name LIKE ? OR type LIKE ? OR block LIKE ? OR floor LIKE ? OR room LIKE ?
+    """
+    param = ('%' + search_text + '%',)*5
+    cur.execute(query, param)
     data = cur.fetchall()
     conn.close()
     return data
-
-# home page
 @app.route('/')
-def home():
-    return render_template("index.html")
+def landing():
+    return render_template("landing.html")  # Landing page dikhega pehle
 
-# search page
+@app.route('/searchpage')
+def searchpage():
+    return render_template("index.html")   # Search page route
+
+
 @app.route('/search', methods=['POST'])
 def search():
-    text = request.form['search']
-    result = get_location(text)
-    return render_template("result.html", result=result)
-    
+    search_text = request.form['search']
+    result = search_data(search_text)
+    return render_template("result.html", result=result, search_text=search_text)
+
 if __name__ == "__main__":
-    import os
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
-
-
+    app.run(debug=True)

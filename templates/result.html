@@ -2,29 +2,93 @@
 <html>
 <head>
     <title>Search Result</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body{
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg,#1c92d2,#6dd5ed,#ff416c,#ff4b2b);
+            background-size:200% 200%;
+            animation: bgMove 15s ease infinite;
+            color:white;
+            padding:30px;
+        }
 
+        table{
+            width:100%;
+            border-collapse: collapse;
+            margin-top:20px;
+        }
+
+        th, td{
+            padding:10px;
+            border:1px solid rgba(255,255,255,0.5);
+            text-align:left;
+        }
+
+        th{
+            background: rgba(255,255,255,0.2);
+        }
+
+        tr:nth-child(even){
+            background: rgba(255,255,255,0.1);
+        }
+
+        tr:hover{
+            background: rgba(255,255,255,0.3);
+        }
+
+        a{
+            display:inline-block;
+            margin-top:20px;
+            padding:10px 20px;
+            background:white;
+            color:#ff416c;
+            border-radius:25px;
+            text-decoration:none;
+            transition:all 0.3s ease;
+        }
+
+        a:hover{
+            transform: scale(1.05);
+            box-shadow:0 0 15px rgba(255,65,108,0.7);
+        }
+
+        @keyframes bgMove{
+            0% {background-position:0% 50%;}
+            50% {background-position:100% 50%;}
+            100% {background-position:0% 50%;}
+        }
+    </style>
 </head>
 <body>
+<h2>Search Results for "{{ search_text }}"</h2>
 
-    <h2>Search Result</h2>
-
-    {% if result %}
+{% if result %}
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Block</th>
+                <th>Floor</th>
+                <th>Room</th>
+            </tr>
+        </thead>
+        <tbody>
         {% for r in result %}
-            <p>
-                <b>Name:</b> {{ r[1] }} <br>
-                <b>Type:</b> {{ r[2] }} <br>
-                <b>Block:</b> {{ r[3] }} <br>
-                <b>Floor:</b> {{ r[4] }} <br>
-                <b>Room:</b> {{ r[5] }}
-            </p>
-            <hr>
+            <tr>
+                <td>{{ r[1] }}</td>
+                <td>{{ r[2] }}</td>
+                <td>{{ r[3] }}</td>
+                <td>{{ r[4] }}</td>
+                <td>{{ r[5] }}</td>
+            </tr>
         {% endfor %}
-    {% else %}
-        <p>No data found</p>
-    {% endif %}
+        </tbody>
+    </table>
+{% else %}
+    <p>No data found.</p>
+{% endif %}
 
-    <a href="/">Back</a>
-
+<a href="/">Back</a>
 </body>
 </html>
