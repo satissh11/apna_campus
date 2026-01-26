@@ -1,12 +1,12 @@
 import qrcode
 
-# Tumhare Render ka live URL
+# Latest Render URL
 url = "https://smart-campus-rw8h.onrender.com"
 
-# QR code generate karo
+# QR code generate
 img = qrcode.make(url)
 
-# Image save karo
+# Save image
 img.save("campus_qr.png")
 
-print("QR Code generated successfully!")
+print("✅ QR code updated with latest URL!")
