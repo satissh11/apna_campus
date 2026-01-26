@@ -32,4 +32,12 @@ def search():
     return render_template("result.html", result=result, search_text=search_text)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    import os
+    port = int(os.environ.get("PORT", 5000))  # Render will provide PORT
+    app.run(host="0.0.0.0", port=port)
+
+#     to deploy and render fix
+# # cd C:\Users\acer\Desktop\smart_campus   # Project folder
+# git add aap.py
+# git commit -m "Fix: Render deployment port"
+# git push origin main
