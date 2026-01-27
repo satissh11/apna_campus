@@ -67,20 +67,20 @@
         <thead>
             <tr>
                 <th>Name</th>
-                <th>Type</th>
-                <th>Block</th>
+                <th>Role</th>
+                <th>Sitting Block</th>
                 <th>Floor</th>
-                <th>Room</th>
+                <th>Room No</th>
             </tr>
         </thead>
         <tbody>
         {% for r in result %}
             <tr>
-                <td>{{ r[1] }}</td>
-                <td>{{ r[2] }}</td>
-                <td>{{ r[3] }}</td>
-                <td>{{ r[4] }}</td>
-                <td>{{ r[5] }}</td>
+                <td>{{ r[1] }}</td>  <!-- name -->
+                <td>{{ r[2] }}</td>  <!-- role -->
+                <td>{{ r[3] }}</td>  <!-- sitting_block -->
+                <td>{{ r[4] }}</td>  <!-- floor -->
+                <td>{{ r[5] }}</td>  <!-- room_no -->
             </tr>
         {% endfor %}
         </tbody>
