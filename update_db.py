@@ -4,9 +4,9 @@ conn = sqlite3.connect("campus.db")
 cur = conn.cursor()
 
 updates = [
-    ('Dr. priyanka srivastav', 'coordinator of mca', 'A1', '3', '303', 1),
-    ('dr. pankaj goswami', 'Dean', 'A1', 'G', '100', 2),
-    ('scholarship', 'e-kalyan', 'Admin', '3', '309', 3),
+    ('Dr. Priyanka Srivastav', 'Program Coordinator', 'A1', '3', '303', 1),
+    ('Dr. Pankaj Goswami', 'Dean of College', 'A1', 'G', '101', 2),
+    ('Scholarship', 'E-kalyan', 'Admin', '3', '309', 3),
     ('Mr. Bikram Pratap Singh', 'Cyber Expert', 'A1', '5', '504', 4),
 ]
 
