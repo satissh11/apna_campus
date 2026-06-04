@@ -1,5 +1,5 @@
-echo flask > requirements.txt
-echo gunicorn >> requirements.txt
-echo qrcode >> requirements.txt
-echo pillow >> requirements.txt
-echo sqlalchemy >> requirements.txt
+flask
+gunicorn
+qrcode
+pillow
+sqlalchemy
