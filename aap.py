@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request
 import sqlite3
 
 app = Flask(__name__)
@@ -45,6 +45,8 @@ def search():
     result = search_data(search_text)
     return render_template("result.html", result=result, search_text=search_text)
 
+# Vercel ke liye sirf app expose karna zaroori hai
+# Local run ke liye ye block useful hai
 if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 5000))
