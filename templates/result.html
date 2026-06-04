@@ -1,94 +1,1017 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Search Result</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Navigator — SBU Ranchi</title>
+    <meta name="description" content="Real-time campus navigation for Sarala Birla University. Find any teacher, building or facility with live map directions.">
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
     <style>
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        :root{
+            --primary: #ff416c;
+            --primary-grad: linear-gradient(135deg, #ff416c, #ff4b2b);
+            --secondary: #6dd5ed;
+            --secondary-grad: linear-gradient(135deg, #2193b0, #6dd5ed);
+            --bg: #06060f;
+            --card-bg: rgba(18, 18, 35, 0.6);
+            --border: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(255, 65, 108, 0.4);
+            --text: #f3f4f6;
+            --muted: #9ca3af;
+        }
+
         body{
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg,#1c92d2,#6dd5ed,#ff416c,#ff4b2b);
-            background-size:200% 200%;
-            animation: bgMove 15s ease infinite;
-            color:white;
-            padding:30px;
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
-        table{
-            width:100%;
-            border-collapse: collapse;
-            margin-top:20px;
+        /* ── HEADER ── */
+        .hdr{
+            display:flex;align-items:center;gap:14px;
+            padding:14px 20px;
+            background:rgba(6, 6, 15, 0.95);backdrop-filter:blur(20px);
+            border-bottom:1px solid var(--border);
+            z-index:200;
+        }
+        .hdr-logo{
+            font-size:1.15rem;font-weight:900;
+            background:linear-gradient(90deg,#ff416c,#6dd5ed);
+            -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+            flex:1;
+        }
+        .gps-badge{
+            display:flex;align-items:center;gap:6px;
+            background:rgba(255,255,255,0.04);border:1px solid var(--border);
+            padding:5px 12px;border-radius:50px;font-size:0.72rem;font-weight:600;
+            cursor:pointer;transition:all 0.2s;
+        }
+        .gps-badge:hover{background:rgba(255,255,255,0.08)}
+        .gps-badge.active{
+            background:rgba(127,255,127,0.08);border-color:rgba(127,255,127,0.25);color:#7fff7f;
+        }
+        .gps-badge.active .gps-dot{background:#7fff7f;animation:pulse 1.2s infinite}
+        .gps-badge.warning{
+            background:rgba(251,191,36,0.08);border-color:rgba(251,191,36,0.25);color:#fbbf24;
+        }
+        .gps-badge.warning .gps-dot{background:#fbbf24}
+        .gps-dot{width:6px;height:6px;border-radius:50%;background:#888;flex-shrink:0}
+        .back-a{
+            display:flex;align-items:center;gap:5px;padding:7px 16px;
+            background:rgba(255,255,255,0.05);border:1px solid var(--border);
+            border-radius:50px;color:#fff;text-decoration:none;font-size:0.75rem;
+            font-weight:700;white-space:nowrap;transition:all 0.2s;
+        }
+        .back-a:hover{background:rgba(255,65,108,0.15);border-color:rgba(255,65,108,0.3)}
+
+        /* ── LAYOUT CONTENT ── */
+        .main-wrapper{
+            flex:1;display:grid;grid-template-columns:360px 1fr;
+            overflow:hidden;position:relative;
+        }
+        @media(max-width:900px){
+            .main-wrapper{grid-template-columns:1fr;grid-template-rows:1fr}
+            .sidebar-results{
+                position:fixed;bottom:0;left:0;right:0;height:45vh;z-index:300;
+                background:#080811;border-radius:24px 24px 0 0;
+                border-top:1px solid var(--border);box-shadow:0 -10px 40px rgba(0,0,0,0.6);
+                transform:translateY(0);transition:transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+            }
+            .sidebar-results.collapsed{transform:translateY(calc(45vh - 54px))}
         }
 
-        th, td{
-            padding:10px;
-            border:1px solid rgba(255,255,255,0.5);
-            text-align:left;
+        /* ── SIDEBAR RESULTS ── */
+        .sidebar-results{
+            border-right:1px solid var(--border);
+            display:flex;flex-direction:column;overflow:hidden;
+            background:rgba(8, 8, 17, 0.98);
+        }
+        .sb-header{
+            padding:18px 20px;border-bottom:1px solid var(--border);
+            display:flex;justify-content:space-between;align-items:center;
+            cursor:pointer;
+        }
+        .sb-title{font-size:0.82rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
+        .sb-count{background:rgba(255,255,255,0.06);padding:2px 8px;border-radius:50px;font-size:0.72rem;color:var(--muted)}
+        
+        .sb-toggle-icon{display:none;font-size:1.1rem;color:var(--muted)}
+        @media(max-width:900px){.sb-toggle-icon{display:block}}
+
+        .results-list{
+            flex:1;overflow-y:auto;padding:16px;
+        }
+        .results-list::-webkit-scrollbar{width:4px}
+        .results-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:4px}
+
+        /* Result Item Card */
+        .card{
+            background:var(--card-bg);border:1px solid var(--border);
+            border-radius:16px;padding:16px;margin-bottom:12px;
+            cursor:pointer;position:relative;overflow:hidden;
+            transition:all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+            display:flex;flex-direction:column;
+        }
+        .card::before{
+            content:'';position:absolute;top:0;left:0;width:3px;height:100%;
+            background:linear-gradient(180deg,#ff416c,#6dd5ed);opacity:0.3;
+        }
+        .card:hover, .card.active{
+            transform:translateY(-2px);border-color:var(--border-hover);
+            box-shadow:0 8px 24px rgba(255,65,108,0.15);
+        }
+        .card.active::before{opacity:1;width:4px}
+        .card-top-info{display:flex;align-items:flex-start;gap:12px;margin-bottom:12px}
+        .card-ico{
+            width:42px;height:42px;border-radius:12px;
+            display:flex;align-items:center;justify-content:center;
+            font-size:1.25rem;flex-shrink:0;
+            background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.05);
+        }
+        .card.active .card-ico{
+            background:rgba(255,65,108,0.1);border-color:rgba(255,65,108,0.25);
+        }
+        .card-details{flex:1;min-width:0}
+        .card-name{font-size:0.95rem;font-weight:700;color:#fff}
+        .card-sub{font-size:0.75rem;color:var(--muted);margin-top:1px}
+        .card-desc{
+            font-size:0.72rem;color:var(--muted);line-height:1.4;
+            margin-top:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
         }
 
-        th{
-            background: rgba(255,255,255,0.2);
+        .nbtn{
+            display:flex;align-items:center;gap:6px;
+            padding:7px 14px;background:var(--primary-grad);
+            border-radius:50px;font-size:0.7rem;font-weight:800;color:#fff;
+            border:none;cursor:pointer;white-space:nowrap;text-transform:uppercase;letter-spacing:0.5px;
+            box-shadow:0 4px 12px rgba(255,65,108,0.2);transition:all 0.2s;
+        }
+        .nbtn:hover{
+            transform:scale(1.04);box-shadow:0 6px 16px rgba(255,65,108,0.4);
+        }
+        .card-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+        .card-chip{
+            background:rgba(255,255,255,0.04);padding:2px 8px;border-radius:50px;
+            font-size:0.68rem;color:var(--muted);border:1px solid rgba(255,255,255,0.02);
         }
 
-        tr:nth-child(even){
-            background: rgba(255,255,255,0.1);
+        /* ── MAP CONTAINER ── */
+        .map-section{
+            position:relative;display:flex;flex-direction:column;height:100%;
+        }
+        #map{flex:1;width:100%;z-index:10}
+
+        /* OSRM loading overlay */
+        #route-loading{
+            position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+            background:rgba(17,17,30,0.9);border:1px solid var(--border);
+            border-radius:18px;padding:20px 30px;text-align:center;
+            z-index:100;box-shadow:0 20px 45px rgba(0,0,0,0.6);
+            display:none;backdrop-filter:blur(8px);
+        }
+        .spinner{
+            width:36px;height:36px;border:3px solid rgba(255,65,108,0.15);
+            border-top-color:#ff416c;border-radius:50%;
+            animation:spin 0.8s linear infinite;margin:0 auto 10px;
+        }
+        @keyframes spin{to{transform:rotate(360deg)}}
+
+        /* ── MAP OVERLAYS ── */
+        /* Top Navigation guidance bar */
+        .guidance-bar{
+            position:absolute;top:16px;left:50%;transform:translateX(-50%);
+            background:rgba(18,18,35,0.9);backdrop-filter:blur(16px);
+            border:1px solid var(--border);border-radius:16px;
+            padding:12px 20px;width:90%;max-width:560px;
+            z-index:90;box-shadow:0 12px 35px rgba(0,0,0,0.5);
+            display:none;align-items:center;gap:14px;
+        }
+        .guidance-ico{font-size:1.8rem;flex-shrink:0}
+        .guidance-info{flex:1;min-width:0}
+        .guidance-title{font-size:0.85rem;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .guidance-desc{font-size:0.75rem;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .guidance-close{
+            background:rgba(255,255,255,0.06);border:none;border-radius:50%;
+            width:28px;height:28px;color:#fff;font-size:0.75rem;cursor:pointer;
+            display:flex;align-items:center;justify-content:center;transition:all 0.2s;
+        }
+        .guidance-close:hover{background:rgba(255,65,108,0.3)}
+
+        /* ── BOTTOM DRAWER NAV CONTROL ── */
+        .nav-control-drawer{
+            position:absolute;bottom:20px;left:50%;transform:translateX(-50%);
+            background:rgba(18,18,35,0.95);backdrop-filter:blur(20px);
+            border:1px solid var(--border);border-radius:24px;
+            width:90%;max-width:560px;z-index:90;
+            box-shadow:0 20px 50px rgba(0,0,0,0.6);
+            display:none;flex-direction:column;overflow:hidden;
+        }
+        .nc-header{
+            padding:16px 20px 12px;border-bottom:1px solid rgba(255,255,255,0.05);
+            display:flex;align-items:center;gap:12px;
+        }
+        .nc-ico{font-size:1.6rem;flex-shrink:0}
+        .nc-title-box{flex:1;min-width:0}
+        .nc-name{font-size:0.95rem;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .nc-sub{font-size:0.72rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        
+        .eta-badge{
+            background:var(--primary-grad);border-radius:12px;
+            padding:6px 12px;text-align:center;min-width:60px;
+        }
+        .eta-val{font-size:1.15rem;font-weight:900;line-height:1}
+        .eta-lbl{font-size:0.55rem;opacity:0.8;text-transform:uppercase;letter-spacing:0.5px}
+
+        /* Tabs inside drawer */
+        .nc-tabs{
+            display:flex;border-bottom:1px solid rgba(255,255,255,0.05);background:rgba(0,0,0,0.15);
+        }
+        .nc-tab{
+            flex:1;padding:10px 0;text-align:center;font-size:0.75rem;
+            font-weight:700;color:var(--muted);cursor:pointer;
+            border-bottom:2px solid transparent;transition:all 0.2s;
+        }
+        .nc-tab.active{color:var(--primary);border-color:var(--primary)}
+
+        /* Tab Panes */
+        .nc-panes{max-height:150px;overflow-y:auto;background:rgba(0,0,0,0.1)}
+        .nc-pane{display:none;padding:14px 20px}
+        .nc-pane.active{display:block}
+
+        /* Direction Steps List */
+        .directions-step{
+            display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;
+            padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.03);
+        }
+        .directions-step:last-child{border:none;margin-bottom:0;padding-bottom:0}
+        .ds-num{
+            width:22px;height:22px;border-radius:50%;background:rgba(255,65,108,0.15);
+            border:1px solid rgba(255,65,108,0.3);color:#ff8fa3;font-size:0.7rem;
+            font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;
+        }
+        .ds-text{font-size:0.78rem;color:var(--text);line-height:1.4}
+        .ds-meta{font-size:0.68rem;color:var(--muted);margin-left:auto;white-space:nowrap}
+
+        /* Footer walk tools */
+        .nc-footer{
+            padding:12px 20px;background:rgba(0,0,0,0.2);
+            border-top:1px solid rgba(255,255,255,0.05);
+            display:flex;align-items:center;justify-content:space-between;gap:14px;
+        }
+        .nc-status{font-size:0.72rem;color:var(--muted)}
+        .nc-btn{
+            display:flex;align-items:center;gap:6px;
+            padding:10px 22px;background:var(--primary-grad);
+            border-radius:50px;font-size:0.82rem;font-weight:800;color:#fff;
+            border:none;cursor:pointer;box-shadow:0 6px 20px rgba(255,65,108,0.3);
+            transition:all 0.2s;white-space:nowrap;
+        }
+        .nc-btn:hover{transform:translateY(-1px);box-shadow:0 8px 25px rgba(255,65,108,0.5)}
+        .nc-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+
+        /* Offline indicator banner inside map */
+        .offline-notice{
+            position:absolute;top:76px;left:50%;transform:translateX(-50%);
+            background:rgba(251,191,36,0.92);backdrop-filter:blur(8px);
+            border:1px solid rgba(251,191,36,0.4);border-radius:10px;
+            padding:6px 16px;font-size:0.72rem;color:#000;font-weight:700;
+            z-index:90;box-shadow:0 8px 20px rgba(0,0,0,0.35);
+            display:none;align-items:center;gap:8px;
         }
 
-        tr:hover{
-            background: rgba(255,255,255,0.3);
-        }
-
-        a{
-            display:inline-block;
-            margin-top:20px;
-            padding:10px 20px;
-            background:white;
-            color:#ff416c;
-            border-radius:25px;
-            text-decoration:none;
-            transition:all 0.3s ease;
-        }
-
-        a:hover{
-            transform: scale(1.05);
-            box-shadow:0 0 15px rgba(255,65,108,0.7);
-        }
-
-        @keyframes bgMove{
-            0% {background-position:0% 50%;}
-            50% {background-position:100% 50%;}
-            100% {background-position:0% 50%;}
-        }
+        /* Leaflet design changes */
+        .leaflet-container{background:#0b0b14!important}
+        .leaflet-bar{border:none!important;box-shadow:0 6px 20px rgba(0,0,0,0.4)!important}
+        .leaflet-bar a{background:rgba(18,18,35,0.9)!important;color:#fff!important;border-color:rgba(255,255,255,0.06)!important}
+        .leaflet-bar a:hover{background:#ff416c!important}
+        .leaflet-popup-content-wrapper{background:#111124!important;color:#fff!important;border:1px solid var(--border)!important;border-radius:14px!important;box-shadow:0 8px 30px rgba(0,0,0,0.6)!important}
+        .leaflet-popup-tip{background:#111124!important}
+        .leaflet-popup-content{font-family:'Outfit',sans-serif!important;font-size:0.78rem!important;line-height:1.45!important}
+        .leaflet-popup-content b{color:#ff8fa3}
     </style>
 </head>
 <body>
-<h2>Search Results for "{{ search_text }}"</h2>
 
-{% if result %}
-    <table>
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Role</th>
-                <th>Sitting Block</th>
-                <th>Floor</th>
-                <th>Room No</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for r in result %}
-            <tr>
-                <td>{{ r[1] }}</td>  <!-- name -->
-                <td>{{ r[2] }}</td>  <!-- role -->
-                <td>{{ r[3] }}</td>  <!-- sitting_block -->
-                <td>{{ r[4] }}</td>  <!-- floor -->
-                <td>{{ r[5] }}</td>  <!-- room_no -->
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-{% else %}
-    <p>No data found.</p>
-{% endif %}
+    <!-- ── HEADER ── -->
+    <header class="hdr">
+        <div class="hdr-logo">🏛️ SBU Smart Navigate</div>
+        
+        <!-- Live GPS Tracker pill -->
+        <div class="gps-badge" id="gps-indicator" onclick="retryGPS()" title="Click to refresh GPS signal">
+            <div class="gps-dot"></div>
+            <span id="gps-indicator-text">Checking GPS…</span>
+        </div>
 
-<a href="/">Back</a>
+        <a href="/" class="back-a">← Search Page</a>
+    </header>
+
+    <!-- ── LAYOUT ── -->
+    <div class="main-wrapper">
+
+        <!-- ── SIDEBAR CARDS LIST ── -->
+        <aside class="sidebar-results" id="sidebar-drawer">
+            <div class="sb-header" onclick="toggleSidebarCollapse()">
+                <div class="sb-title">📍 SEARCH RESULTS</div>
+                <div class="sb-count" id="sb-count-badge">0 found</div>
+                <div class="sb-toggle-icon" id="sb-toggle-icon">▲</div>
+            </div>
+
+            <div class="results-list" id="card-container">
+                {% if result %}
+                  {% for r in result %}
+                  {% set cat = r[12] if r[12] else 'building' %}
+                  {% set ico = r[15] if r[15] else ('🏢' if cat=='building' else ('👨‍🏫' if cat=='teacher' else ('🍽️' if cat=='canteen' else '🏠'))) %}
+                  <div class="card" id="card-{{ loop.index0 }}" onclick="selectDestination({{ loop.index0 }})"
+                       data-lat="{{ r[9] if r[9] else 23.34734 }}"
+                       data-lng="{{ r[10] if r[10] else 85.41747 }}"
+                       data-name="{{ r[1] }}"
+                       data-label="{{ r[11] if r[11] else r[1] }}"
+                       data-ico="{{ ico }}"
+                       data-cat="{{ cat }}"
+                       data-desc="{{ r[13] if r[13] else 'Academic space at Sarala Birla University Ranchi.' }}"
+                       data-dir="{{ r[14] if r[14] else 'Head inside the main gate toward the building.' }}">
+                      
+                      <div class="card-top-info">
+                          <div class="card-ico">{{ ico }}</div>
+                          <div class="card-details">
+                              <div class="card-name">{{ r[1] }}</div>
+                              <div class="card-sub">{{ r[6] if r[6] else r[2] }}</div>
+                              <div class="card-desc">{{ r[13] }}</div>
+                          </div>
+                      </div>
+
+                      <div class="card-chips">
+                          {% if r[3] %}<span class="card-chip">Block {{ r[3] }}</span>{% endif %}
+                          {% if r[4] %}<span class="card-chip">Floor {{ r[4] }}</span>{% endif %}
+                          {% if r[5] %}<span class="card-chip">Room {{ r[5] }}</span>{% endif %}
+                          <span class="card-chip" style="color:#6dd5ed;border-color:rgba(109,213,237,0.15)">Live Route</span>
+                      </div>
+                  </div>
+                  {% endfor %}
+                {% else %}
+                  <div style="text-align:center;padding:40px 20px;color:var(--muted)">
+                      <div style="font-size:2rem;margin-bottom:12px">🔍</div>
+                      <div>No matching places found</div>
+                      <a href="/" style="color:var(--primary);font-size:0.75rem;margin-top:10px;display:inline-block">Back to Directory</a>
+                  </div>
+                {% endif %}
+            </div>
+        </aside>
+
+        <!-- ── MAP CANVAS SECTION ── -->
+        <main class="map-section">
+            <!-- Offline / Off campus alerts -->
+            <div class="offline-notice" id="offline-bar">
+                <span>⚠️</span>
+                <span id="offline-msg">Not on campus: Simulation/Preview Mode from Main Gate</span>
+            </div>
+
+            <!-- Route guidance directions header -->
+            <div class="guidance-bar" id="guidance-bar">
+                <div class="guidance-ico" id="guidance-ico">🚶</div>
+                <div class="guidance-info">
+                    <div class="guidance-title" id="guidance-title">Follow the highlighted trail</div>
+                    <div class="guidance-desc" id="guidance-desc">Route is loaded and ready for navigation</div>
+                </div>
+                <button class="guidance-close" onclick="closeGuidanceBar()">✕</button>
+            </div>
+
+            <!-- Map Pane -->
+            <div id="map"></div>
+
+            <!-- Loading overlay -->
+            <div id="route-loading">
+                <div class="spinner"></div>
+                <div style="font-size:0.75rem;color:var(--muted)">Drafting routing paths…</div>
+            </div>
+
+            <!-- Bottom Navigation Drawer panel -->
+            <div class="nav-control-drawer" id="nav-drawer">
+                <div class="nc-header">
+                    <div class="nc-ico" id="nc-ico">🏢</div>
+                    <div class="nc-title-box">
+                        <div class="nc-name" id="nc-name">Destination Block</div>
+                        <div class="nc-sub" id="nc-sub">Sarala Birla University Campus</div>
+                    </div>
+                    <div class="eta-badge">
+                        <div class="eta-val" id="nc-eta">—</div>
+                        <div class="eta-lbl">Min walk</div>
+                    </div>
+                </div>
+
+                <div class="nc-tabs">
+                    <div class="nc-tab active" id="tab-map-btn" onclick="switchDrawerTab('map')">🗺️ Navigation Path</div>
+                    <div class="nc-tab" id="tab-dir-btn" onclick="switchDrawerTab('dir')">🧭 Step-by-Step</div>
+                </div>
+
+                <div class="nc-panes">
+                    <div class="nc-pane active" id="pane-map">
+                        <div style="font-size:0.72rem;color:var(--muted);line-height:1.45" id="pane-map-desc">
+                            The map route tracks your real-time walk progress. If off campus, this simulates a walk test from the SBU Entrance Gate.
+                        </div>
+                    </div>
+                    <div class="nc-pane" id="pane-dir">
+                        <div id="directions-steps-list">
+                            <!-- Directions loaded dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="nc-footer">
+                    <div class="nc-status" id="nc-status-text">Ready to navigate</div>
+                    <button class="nc-btn" id="start-walk-btn" onclick="toggleWalkingMode()">
+                        🗺️ Start Navigation
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Leaflet Script -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // ══════════════════════════════════════════════
+        //  CONFIGS & COORDINATES
+        // ══════════════════════════════════════════════
+        const SBU_CENTER = [23.3473466, 85.4174703];
+        const GATE_POS   = [23.34630, 85.41700]; // Simulated/Real Entrance Gate
+        
+        let map = null;
+        let userPos = null;       // Actual or simulated user location
+        let destPos = null;       // Selected target location
+        let realGPSPos = null;    // Real GPS lat/lng parsed from browser
+        let userOnCampus = false;
+
+        let userMkr = null;
+        let destMkr = null;
+        let routePolyline = null;
+        let routeGlow = null;
+        let arrowLayer = null;
+
+        // Walking simulation variables
+        let walkPathCoords = [];
+        let walkIndex = 0;
+        let walkTimer = null;
+        let isWalkingMode = false;
+        let currentSelectedIdx = null;
+
+        // GPS Watcher
+        let gpsWatchId = null;
+
+        // Total results count update
+        const totalCount = {{ result|length }};
+        document.getElementById('sb-count-badge').textContent = totalCount + (totalCount === 1 ? ' place' : ' places');
+
+        // ══════════════════════════════════════════════
+        //  PERSON & PIN ICONS
+        // ══════════════════════════════════════════════
+        function personIcon(heading = 0) {
+            return L.divIcon({
+                className: '',
+                html: `
+                <div style="transform:rotate(${heading}deg);transition:transform 0.3s ease;filter:drop-shadow(0 4px 8px rgba(255,65,108,0.4))">
+                  <svg width="46" height="54" viewBox="0 0 52 64" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="26" cy="26" r="23" fill="rgba(255,65,108,0.22)" stroke="none"/>
+                    <circle cx="26" cy="14" r="8" fill="#ff416c" stroke="white" stroke-width="2.5"/>
+                    <path d="M14 36 Q26 28 38 36 L35 50 H30 L26 42 L22 50 H17 Z"
+                          fill="#ff416c" stroke="white" stroke-width="1.8" stroke-linejoin="round"/>
+                    <polygon points="26,56 20,64 32,64" fill="#ff416c"/>
+                    <circle cx="26" cy="26" r="18" fill="none" stroke="#ff416c" stroke-width="1" opacity="0.3" stroke-dasharray="4,4"/>
+                  </svg>
+                </div>`,
+                iconSize: [46, 54],
+                iconAnchor: [23, 48]
+            });
+        }
+
+        function destPinIcon(emoji) {
+            return L.divIcon({
+                className: '',
+                html: `
+                <div style="display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 6px 14px rgba(109,213,237,0.5))">
+                  <div style="
+                    background:linear-gradient(135deg,#6dd5ed,#2193b0);
+                    width:42px;height:42px;border-radius:50% 50% 50% 0;
+                    transform:rotate(-45deg);border:3.5px solid white;
+                    display:flex;align-items:center;justify-content:center;
+                    box-shadow:0 4px 12px rgba(109,213,237,0.4)">
+                    <span style="transform:rotate(45deg);font-size:1.15rem">${emoji}</span>
+                  </div>
+                  <div style="width:2.5px;height:6px;background:#6dd5ed;margin-top:-1.5px"></div>
+                </div>`,
+                iconSize: [42, 54],
+                iconAnchor: [21, 54]
+            });
+        }
+
+        // ══════════════════════════════════════════════
+        //  REAL-TIME GPS TRACKING & INITIALIZATION
+        // ══════════════════════════════════════════════
+        function haversine(la1, lo1, la2, lo2) {
+            const R = 6371000, r = Math.PI / 180;
+            const dLa = (la2 - la1) * r, dLo = (lo2 - lo1) * r;
+            const a = Math.sin(dLa/2)**2 + Math.cos(la1*r) * Math.cos(la2*r) * Math.sin(dLo/2)**2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+
+        function initGPSWatcher() {
+            const badge = document.getElementById('gps-indicator');
+            const text = document.getElementById('gps-indicator-text');
+            const offlineBar = document.getElementById('offline-bar');
+
+            if (!navigator.geolocation) {
+                badge.className = 'gps-badge warning';
+                text.textContent = 'GPS Not Supported';
+                userPos = GATE_POS;
+                userOnCampus = false;
+                setupMap();
+                return;
+            }
+
+            // watchPosition for REAL-TIME location updates
+            gpsWatchId = navigator.geolocation.watchPosition(
+                pos => {
+                    const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+                    realGPSPos = [lat, lng];
+                    const distToCampus = haversine(lat, lng, SBU_CENTER[0], SBU_CENTER[1]);
+                    userOnCampus = distToCampus < 900; // ~900m boundary
+
+                    if (userOnCampus) {
+                        userPos = [lat, lng];
+                        badge.className = 'gps-badge active';
+                        text.textContent = `Live GPS (${Math.round(accuracy)}m)`;
+                        offlineBar.style.display = 'none';
+
+                        // If user is actively walking on campus, dynamically update their marker & route from their real position!
+                        if (userMkr) {
+                            userMkr.setLatLng(userPos);
+                            if (isWalkingMode && !walkTimer) {
+                                // If they are on campus and move, recalculate the OSRM route in real time!
+                                recalculateLiveRoute();
+                            }
+                        }
+                    } else {
+                        // User is outside campus
+                        userPos = GATE_POS;
+                        badge.className = 'gps-badge warning';
+                        text.textContent = 'Off Campus';
+                        offlineBar.style.display = 'flex';
+                    }
+
+                    if (!map) {
+                        setupMap();
+                    }
+                },
+                err => {
+                    console.warn("GPS Tracking blocked or failed. Using GATE position fallback:", err.message);
+                    userPos = GATE_POS;
+                    userOnCampus = false;
+                    badge.className = 'gps-badge warning';
+                    text.textContent = 'GPS Unavailable';
+                    offlineBar.style.display = 'flex';
+                    document.getElementById('offline-msg').textContent = 'Location blocked: Simulated from SBU Main Gate';
+
+                    if (!map) {
+                        setupMap();
+                    }
+                },
+                { enableHighAccuracy: true, maximumAge: 2000, timeout: 8000 }
+            );
+        }
+
+        function retryGPS() {
+            if (gpsWatchId) {
+                navigator.geolocation.clearWatch(gpsWatchId);
+            }
+            initGPSWatcher();
+        }
+
+        // Setup Leaflet map
+        function setupMap() {
+            map = L.map('map', {
+                zoomControl: false,
+                attributionControl: false
+            }).setView(userPos || GATE_POS, 17);
+
+            // Dark premium maps layer
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                maxZoom: 20,
+                subdomains: 'abcd'
+            }).addTo(map);
+
+            L.control.zoom({ position: 'topright' }).addTo(map);
+
+            // SBU Campus outer boundary ring
+            L.circle(SBU_CENTER, {
+                radius: 280, color: '#ff416c', fillColor: '#ff416c',
+                fillOpacity: 0.02, weight: 1, dashArray: '8,6', opacity: 0.35
+            }).addTo(map);
+
+            // Add standard marker for starting user
+            userMkr = L.marker(userPos || GATE_POS, {
+                icon: personIcon(0),
+                zIndexOffset: 1000
+            }).addTo(map).bindPopup('<b>🚶 Your Location</b><br><small style="color:#aaa">' + (userOnCampus ? 'Real-time GPS coordinates' : 'Simulated position from Main Gate') + '</small>');
+
+            // SBU Center Label Marker
+            L.marker(SBU_CENTER, {
+                icon: L.divIcon({
+                    className: '',
+                    html: `<div style="background:rgba(255,65,108,0.1);border:1px solid rgba(255,65,108,0.25);color:#ff8fa3;padding:3.5px 10px;border-radius:8px;font-size:0.68rem;font-weight:700;white-space:nowrap;font-family:Outfit,sans-serif">🏛️ SBU Campus रांची</div>`,
+                    iconAnchor: [55, 12]
+                }),
+                interactive: false
+            }).addTo(map);
+
+            // Auto-select first result if exists
+            if (totalCount > 0) {
+                setTimeout(() => selectDestination(0), 400);
+            }
+        }
+
+        // ══════════════════════════════════════════════
+        //  DESTINATION SELECTION & ROUTE LOADING
+        // ══════════════════════════════════════════════
+        async function selectDestination(idx) {
+            if (isWalkingMode) {
+                stopWalkingSimulation();
+            }
+
+            const cards = document.querySelectorAll('.card');
+            cards.forEach(c => c.classList.remove('active'));
+
+            const card = document.getElementById('card-' + idx);
+            if (!card) return;
+            card.classList.add('active');
+            currentSelectedIdx = idx;
+
+            const lat = parseFloat(card.dataset.lat);
+            const lng = parseFloat(card.dataset.lng);
+            destPos = [lat, lng];
+
+            // Update Drawer
+            document.getElementById('nc-ico').textContent = card.dataset.ico;
+            document.getElementById('nc-name').textContent = card.dataset.name;
+            document.getElementById('nc-sub').textContent = card.dataset.label;
+            document.getElementById('pane-map-desc').textContent = card.dataset.desc;
+            document.getElementById('nav-drawer').style.display = 'flex';
+
+            // Show route loaders
+            document.getElementById('route-loading').style.display = 'block';
+
+            // Compute route
+            await fetchAndDrawOSRMRoute(userPos || GATE_POS, destPos, card.dataset.ico, card.dataset.name, card.dataset.dir);
+        }
+
+        // ══════════════════════════════════════════════
+        //  OSRM ROUTING IMPLEMENTATION
+        // ══════════════════════════════════════════════
+        async function fetchAndDrawOSRMRoute(origin, dest, emoji, name, directionsText) {
+            const [oLat, oLng] = origin;
+            const [dLat, dLng] = dest;
+            const url = `https://router.project-osrm.org/route/v1/foot/${oLng},${oLat};${dLng},${dLat}?overview=full&geometries=geojson&steps=true`;
+
+            let coords = null;
+            let steps = null;
+
+            try {
+                const resp = await fetch(url, { signal: AbortSignal.timeout(6000) });
+                const json = await resp.json();
+                if (json.code === 'Ok' && json.routes && json.routes.length > 0) {
+                    const route = json.routes[0];
+                    coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+                    
+                    if (route.legs && route.legs[0] && route.legs[0].steps) {
+                        steps = route.legs[0].steps
+                            .filter(s => s.maneuver && s.maneuver.type !== 'arrive')
+                            .map(s => ({
+                                instruction: formatOSRMInstruction(s),
+                                dist: s.distance ? Math.round(s.distance) + 'm' : ''
+                            }));
+                    }
+                }
+            } catch (err) {
+                console.warn("OSRM fetching error. Drawing fallbacks.", err);
+            }
+
+            // Fallback straight / curve lines
+            if (!coords || coords.length < 2) {
+                coords = [
+                    origin,
+                    [(origin[0] + dest[0])/2 + 0.0001, (origin[1] + dest[1])/2],
+                    dest
+                ];
+            }
+
+            // Clean previous lines
+            if (routePolyline) map.removeLayer(routePolyline);
+            if (routeGlow) map.removeLayer(routeGlow);
+            if (arrowLayer) map.removeLayer(arrowLayer);
+            if (destMkr) map.removeLayer(destMkr);
+
+            // Draw Glow
+            routeGlow = L.polyline(coords, {
+                color: '#ff416c',
+                weight: 12,
+                opacity: 0.15,
+                lineCap: 'round',
+                lineJoin: 'round'
+            }).addTo(map);
+
+            // Draw Core Route
+            routePolyline = L.polyline(coords, {
+                color: '#ff416c',
+                weight: 5,
+                opacity: 0.9,
+                dashArray: '12, 8',
+                lineCap: 'round',
+                lineJoin: 'round'
+            }).addTo(map);
+
+            // Add arrows to route
+            arrowLayer = L.layerGroup().addTo(map);
+            const arrowStep = Math.max(1, Math.floor(coords.length / 5));
+            for (let i = arrowStep; i < coords.length - 1; i += arrowStep) {
+                const pt = coords[i];
+                const nextPt = coords[i+1];
+                const angle = Math.atan2(nextPt[1] - pt[1], nextPt[0] - pt[0]) * 180 / Math.PI;
+                L.marker(pt, {
+                    icon: L.divIcon({
+                        className: '',
+                        html: `<div style="transform:rotate(${angle-90}deg);color:#ff416c;font-size:0.8rem;text-shadow:0 0 5px #ff416c">➤</div>`,
+                        iconSize: [16, 16],
+                        iconAnchor: [8, 8]
+                    }),
+                    interactive: false
+                }).addTo(arrowLayer);
+            }
+
+            // Draw Destination marker
+            destMkr = L.marker(dest, {
+                icon: destPinIcon(emoji)
+            }).addTo(map).bindPopup(`<b>${emoji} ${name}</b><br><small style="color:#aaa">Campus Destination</small>`).openPopup();
+
+            // Store current path coordinates for simulated walk animation
+            walkPathCoords = coords;
+
+            // Fit camera bounds
+            map.fitBounds(L.latLngBounds([...coords, origin, dest]), {
+                padding: [60, 60],
+                maxZoom: 18
+            });
+
+            // Update drawer info
+            const distanceMeters = Math.round(haversine(origin[0], origin[1], dest[0], dest[1]));
+            const walkMin = Math.max(1, Math.round(distanceMeters / 75)); // standard walking speed ~75m/min
+
+            document.getElementById('nc-eta').textContent = walkMin;
+            document.getElementById('nc-status-text').textContent = `Distance: ${distanceMeters}m · ETA ~${walkMin} min`;
+
+            // Draw step directions list
+            renderStepList(steps, directionsText, emoji);
+
+            // Close route loading
+            document.getElementById('route-loading').style.display = 'none';
+
+            // Open top guidance bar
+            document.getElementById('guidance-title').textContent = `Navigate to ${name}`;
+            document.getElementById('guidance-desc').textContent = `Walking route is ${distanceMeters} meters. Tap "Start Navigation" below.`;
+            document.getElementById('guidance-bar').style.display = 'flex';
+        }
+
+        // Recalculates route in real-time as user physically moves
+        async function recalculateLiveRoute() {
+            if (!destPos || !currentSelectedIdx) return;
+            const card = document.getElementById('card-' + currentSelectedIdx);
+            if (!card) return;
+
+            const [oLat, oLng] = userPos;
+            const [dLat, dLng] = destPos;
+            const url = `https://router.project-osrm.org/route/v1/foot/${oLng},${oLat};${dLng},${dLat}?overview=full&geometries=geojson`;
+
+            try {
+                const resp = await fetch(url);
+                const json = await resp.json();
+                if (json.code === 'Ok' && json.routes && json.routes.length > 0) {
+                    const coords = json.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+                    
+                    if (routePolyline) routePolyline.setLatLngs(coords);
+                    if (routeGlow) routeGlow.setLatLngs(coords);
+                    
+                    const distanceMeters = Math.round(haversine(oLat, oLng, dLat, dLng));
+                    const walkMin = Math.max(1, Math.round(distanceMeters / 75));
+
+                    document.getElementById('nc-eta').textContent = walkMin;
+                    document.getElementById('nc-status-text').textContent = `Real-time GPS Tracking: ${distanceMeters}m remaining`;
+
+                    // If user is within 10 meters, declare arrival
+                    if (distanceMeters < 10) {
+                        finishWalkingMode();
+                    }
+                }
+            } catch(e) {
+                console.warn("Failed to recalculate live route.", e);
+            }
+        }
+
+        function formatOSRMInstruction(step) {
+            const type = step.maneuver.type;
+            const mod = step.maneuver.modifier || '';
+            const roadName = step.name || 'campus pathway';
+
+            if (type === 'depart') return `Head ${mod} on ${roadName}`;
+            if (type === 'turn') return `Turn ${mod} onto ${roadName}`;
+            if (type === 'continue') return `Continue ${mod} on ${roadName}`;
+            return `Walk toward ${roadName}`;
+        }
+
+        function renderStepList(steps, dbSteps, emoji) {
+            const list = document.getElementById('directions-steps-list');
+            let html = '';
+
+            if (steps && steps.length > 0) {
+                steps.forEach((s, idx) => {
+                    html += `
+                    <div class="directions-step">
+                        <div class="ds-num">${idx + 1}</div>
+                        <div class="ds-text">${s.instruction}</div>
+                        <div class="ds-meta">${s.dist}</div>
+                    </div>`;
+                });
+            } else {
+                // DB Fallback steps
+                const splitSteps = dbSteps.split('->').map(s => s.trim()).filter(Boolean);
+                splitSteps.forEach((s, idx) => {
+                    const isLast = idx === splitSteps.length - 1;
+                    html += `
+                    <div class="directions-step">
+                        <div class="ds-num">${idx + 1}</div>
+                        <div class="ds-text">${s}</div>
+                        <div class="ds-meta">${isLast ? emoji : '↓'}</div>
+                    </div>`;
+                });
+            }
+
+            list.innerHTML = html;
+        }
+
+        // ══════════════════════════════════════════════
+        //  WALKING CONTROLLER (SIMULATOR & REAL GPS)
+        // ══════════════════════════════════════════════
+        function toggleWalkingMode() {
+            const btn = document.getElementById('start-walk-btn');
+
+            if (isWalkingMode) {
+                stopWalkingSimulation();
+            } else {
+                // START WALKING
+                isWalkingMode = true;
+                btn.textContent = '⏹️ Stop Navigation';
+                btn.style.background = 'linear-gradient(135deg, #444, #222)';
+                document.getElementById('nc-status-text').textContent = 'Navigation initiated…';
+
+                if (userOnCampus) {
+                    // Real GPS tracking mode
+                    document.getElementById('nc-status-text').textContent = '📡 Real-time GPS tracking active. Walk along the path!';
+                    if (userMkr) {
+                        userMkr.openPopup();
+                    }
+                } else {
+                    // Off campus: trigger simulated demo walking
+                    document.getElementById('nc-status-text').textContent = '🚗 Simulating walking demo from Main Gate…';
+                    startWalkingSimulation();
+                }
+            }
+        }
+
+        function startWalkingSimulation() {
+            if (walkPathCoords.length < 2) return;
+            walkIndex = 0;
+            
+            const totalSteps = walkPathCoords.length;
+            const simDuration = Math.max(6000, walkPathCoords.length * 1000); // 1 sec per coordinate dot
+            const intervalTime = simDuration / totalSteps;
+
+            function runDemoStep() {
+                if (walkIndex >= totalSteps) {
+                    finishWalkingMode();
+                    return;
+                }
+
+                const currentCoord = walkPathCoords[walkIndex];
+                const nextCoord = walkPathCoords[Math.min(walkIndex + 1, totalSteps - 1)];
+                const headingAngle = Math.atan2(nextCoord[1] - currentCoord[1], nextCoord[0] - currentCoord[0]) * 180 / Math.PI;
+
+                // Update marker & camera
+                if (userMkr) {
+                    userMkr.setLatLng(currentCoord);
+                    userMkr.setIcon(personIcon(headingAngle));
+                }
+
+                map.panTo(currentCoord, { animate: true, duration: intervalTime / 1000 });
+
+                // Update details
+                const remainingDist = Math.round(haversine(currentCoord[0], currentCoord[1], destPos[0], destPos[1]));
+                document.getElementById('nc-status-text').textContent = `Simulated walking: ${remainingDist}m remaining`;
+
+                const remMin = Math.ceil(remainingDist / 75);
+                document.getElementById('nc-eta').textContent = remMin > 0 ? remMin : '0';
+
+                walkIndex++;
+                walkTimer = setTimeout(runDemoStep, intervalTime);
+            }
+
+            runDemoStep();
+        }
+
+        function stopWalkingSimulation() {
+            if (walkTimer) {
+                clearTimeout(walkTimer);
+                walkTimer = null;
+            }
+            isWalkingMode = false;
+            
+            const btn = document.getElementById('start-walk-btn');
+            btn.textContent = '🗺️ Start Navigation';
+            btn.style.background = '';
+            document.getElementById('nc-status-text').textContent = 'Navigation stopped';
+
+            // Reset marker position
+            if (userMkr) {
+                userMkr.setLatLng(userPos || GATE_POS);
+                userMkr.setIcon(personIcon(0));
+            }
+        }
+
+        function finishWalkingMode() {
+            if (walkTimer) {
+                clearTimeout(walkTimer);
+                walkTimer = null;
+            }
+            isWalkingMode = false;
+
+            const btn = document.getElementById('start-walk-btn');
+            btn.textContent = '✅ Arrived!';
+            btn.style.background = 'linear-gradient(135deg, #00c853, #00e676)';
+            btn.disabled = true;
+
+            document.getElementById('nc-status-text').textContent = '🏁 Welcome! You have arrived at your destination.';
+            document.getElementById('nc-eta').textContent = '0';
+
+            if (destMkr) destMkr.openPopup();
+
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.textContent = '🗺️ Start Navigation';
+                btn.style.background = '';
+                if (userMkr) {
+                    userMkr.setLatLng(userPos || GATE_POS);
+                    userMkr.setIcon(personIcon(0));
+                }
+            }, 5000);
+        }
+
+        // ══════════════════════════════════════════════
+        //  DRAWER UI MANAGEMENT
+        // ══════════════════════════════════════════════
+        function switchDrawerTab(tab) {
+            document.getElementById('tab-map-btn').classList.toggle('active', tab === 'map');
+            document.getElementById('tab-dir-btn').classList.toggle('active', tab === 'dir');
+            
+            document.getElementById('pane-map').classList.toggle('active', tab === 'map');
+            document.getElementById('pane-dir').classList.toggle('active', tab === 'dir');
+        }
+
+        function closeGuidanceBar() {
+            document.getElementById('guidance-bar').style.display = 'none';
+        }
+
+        function toggleSidebarCollapse() {
+            if (window.innerWidth <= 900) {
+                const sidebar = document.getElementById('sidebar-drawer');
+                const icon = document.getElementById('sb-toggle-icon');
+                const isCollapsed = sidebar.classList.toggle('collapsed');
+                icon.textContent = isCollapsed ? '▲' : '▼';
+            }
+        }
+
+        // Auto collapse sidebar on mobile
+        window.addEventListener('resize', () => {
+            const sidebar = document.getElementById('sidebar-drawer');
+            if (window.innerWidth > 900) {
+                sidebar.classList.remove('collapsed');
+            }
+        });
+
+        // Initialize GPS watcher
+        initGPSWatcher();
+    </script>
 </body>
 </html>
